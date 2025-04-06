@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hand Gesture Recognition</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    <style>
+        .camera-container {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .video-feed {
+            width: 100%;
+            display: block;
+        }
+        
+        .disabled-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 1.5rem;
+            z-index: 10;
+        }
+        
+        .result-panel {
+            transition: all 0.3s ease;
+        }
+        
+        .button-primary {
+            transition: all 0.3s ease;
+        }
+        
+        .button-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 0.6; }
+            50% { opacity: 1; }
+            100% { opacity: 0.6; }
+        }
+        
+        .live-indicator {
+            animation: pulse 2s infinite;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <div class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-gray-800 mb-2">Hand Gesture Recognition</h1>
+            <p class="text-lg text-gray-600">Translate hand gestures into text in real-time</p>
+        </div>
+        
+        <div class="flex flex-col md:flex-row gap-8 mb-8">
+            <!-- Camera feed section -->
+            <div class="w-full md:w-2/3">
+                <div class="bg-white p-4 rounded-lg shadow-md">
+                    <div class="camera-container mb-4" id="camera-container">
+                        <img id="video-feed" class="video-feed" src="" alt="Camera feed will appear here">
+                        <div class="disabled-overlay" id="camera-overlay">
+                            <div class="text-center">
+                                <p>Camera is disabled</p>
+                                <p class="text-sm mt-2">Click the button below to enable</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="flex justify-center">
+                        <button id="toggle-camera" class="button-primary bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-3 rounded-lg flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M4 5a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V7a2 2 0 00-2-2h-1.586a1 1 0 01-.707-.293l-1.121-1.121A2 2 0 0011.172 3H8.828a2 2 0 00-1.414.586L6.293 4.707A1 1 0 015.586 5H4zm6 9a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" />
+                            </svg>
+                            Enable Camera
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Recognition results section -->
+            <div class="w-full md:w-1/3">
+                <div class="bg-white p-6 rounded-lg shadow-md h-full">
+                    <div class="flex items-center justify-between mb-6">
+                        <h2 class="text-2xl font-bold text-gray-800">Recognition Results</h2>
+                        <div id="status-indicator" class="hidden">
+                            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                                <span class="h-2 w-2 rounded-full bg-green-500 mr-2 live-indicator"></span>
+                                Live
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-6">
+                        <div class="result-panel p-4 bg-gray-50 rounded-lg">
+                            <h3 class="text-sm font-medium text-gray-500 mb-1">Hand Sign</h3>
+                            <p id="hand-sign" class="text-lg font-semibold text-gray-800">Not detected</p>
+                        </div>
+                        
+                        <div class="result-panel p-4 bg-gray-50 rounded-lg">
+                            <h3 class="text-sm font-medium text-gray-500 mb-1">Finger Gesture</h3>
+                            <p id="finger-gesture" class="text-lg font-semibold text-gray-800">Not detected</p>
+                        </div>
+                        
+                        <div class="result-panel p-4 bg-gray-50 rounded-lg">
+                            <h3 class="text-sm font-medium text-gray-500 mb-1">FPS</h3>
+                            <p id="fps" class="text-lg font-semibold text-gray-800">0</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-white p-6 rounded-lg shadow-md mb-8">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">How to Use</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="p-4 border border-gray-200 rounded-lg">
+                    <div class="flex items-center justify-center h-12 w-12 rounded-md bg-blue-500 text-white mb-4">
+                        <span class="text-xl font-bold">1</span>
+                    </div>
+                    <h3 class="text-lg font-medium text-gray-800 mb-2">Enable Camera</h3>
+                    <p class="text-gray-600">Click the "Enable Camera" button and allow access to your webcam.</p>
+                </div>
+                
+                <div class="p-4 border border-gray-200 rounded-lg">
+                    <div class="flex items-center justify-center h-12 w-12 rounded-md bg-blue-500 text-white mb-4">
+                        <span class="text-xl font-bold">2</span>
+                    </div>
+                    <h3 class="text-lg font-medium text-gray-800 mb-2">Show Your Hand</h3>
+                    <p class="text-gray-600">Position your hand in front of the camera within the frame.</p>
+                </div>
+                
+                <div class="p-4 border border-gray-200 rounded-lg">
+                    <div class="flex items-center justify-center h-12 w-12 rounded-md bg-blue-500 text-white mb-4">
+                        <span class="text-xl font-bold">3</span>
+                    </div>
+                    <h3 class="text-lg font-medium text-gray-800 mb-2">View Results</h3>
+                    <p class="text-gray-600">The system will detect and display your hand gestures in real-time.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // DOM elements
+            const toggleButton = document.getElementById('toggle-camera');
+            const videoFeed = document.getElementById('video-feed');
+            const cameraOverlay = document.getElementById('camera-overlay');
+            const statusIndicator = document.getElementById('status-indicator');
+            const handSignElement = document.getElementById('hand-sign');
+            const fingerGestureElement = document.getElementById('finger-gesture');
+            const fpsElement = document.getElementById('fps');
+            
+            // State
+            let isCameraEnabled = false;
+            let dataUpdateInterval = null;
+            
+            // Toggle camera function
+            function toggleCamera() {
+                if (isCameraEnabled) {
+                    // Disable camera
+                    videoFeed.src = '';
+                    cameraOverlay.style.display = 'flex';
+                    toggleButton.innerHTML = `
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M4 5a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V7a2 2 0 00-2-2h-1.586a1 1 0 01-.707-.293l-1.121-1.121A2 2 0 0011.172 3H8.828a2 2 0 00-1.414.586L6.293 4.707A1 1 0 015.586 5H4zm6 9a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" />
+                        </svg>
+                        Enable Camera
+                    `;
+                    statusIndicator.classList.add('hidden');
+                    
+                    // Clear data update interval
+                    if (dataUpdateInterval) {
+                        clearInterval(dataUpdateInterval);
+                        dataUpdateInterval = null;
+                    }
+                    
+                    // Reset recognition results
+                    handSignElement.textContent = 'Not detected';
+                    fingerGestureElement.textContent = 'Not detected';
+                    fpsElement.textContent = '0';
+                } else {
+                    // Enable camera
+                    // Add timestamp to prevent caching
+                    const timestamp = new Date().getTime();
+                    videoFeed.src = `/video_feed?t=${timestamp}`;
+                    cameraOverlay.style.display = 'none';
+                    toggleButton.innerHTML = `
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M13.477 14.89A6 6 0 015.11 6.524l8.367 8.368zm1.414-1.414L6.524 5.11a6 6 0 018.367 8.367zM18 10a8 8 0 11-16 0 8 8 0 0116 0z" clip-rule="evenodd" />
+                        </svg>
+                        Disable Camera
+                    `;
+                    statusIndicator.classList.remove('hidden');
+                    
+                    // Start updating data
+                    dataUpdateInterval = setInterval(updateRecognitionData, 100);
+                }
+                
+                isCameraEnabled = !isCameraEnabled;
+            }
+            
+            // Function to update recognition data
+            function updateRecognitionData() {
+                fetch('/get_data')
+                    .then(response => response.json())
+                    .then(data => {
+                        // Update UI with recognition data
+                        handSignElement.textContent = data.hand_sign || 'Not detected';
+                        fingerGestureElement.textContent = data.finger_gesture || 'Not detected';
+                        fpsElement.textContent = data.fps || '0';
+                    })
+                    .catch(error => {
+                        console.error('Error fetching recognition data:', error);
+                    });
+            }
+            
+            // Event listeners
+            toggleButton.addEventListener('click', toggleCamera);
+            
+            // Handle image loading errors
+            videoFeed.addEventListener('error', function(e) {
+                if (isCameraEnabled) {
+                    // Try to reload if there was an error but camera should be enabled
+                    setTimeout(() => {
+                        const timestamp = new Date().getTime();
+                        videoFeed.src = `/video_feed?t=${timestamp}`;
+                    }, 1000);
+                }
+            });
+        });
+    </script>
+</body>
+</html>
